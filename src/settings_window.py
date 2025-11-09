@@ -35,6 +35,21 @@ class SettingsWindow(QWidget):
         self.setMinimumWidth(500)
         self.setMinimumHeight(400)
         
+        # Убедиться что окно появится на экране
+        self.setGeometry(100, 100, 500, 400)
+        
+        # Флаги окна - важно для Windows
+        from PyQt5.QtCore import Qt
+        self.setWindowFlags(
+            Qt.Window | 
+            Qt.WindowStaysOnTopHint |  # Всегда поверх других окон
+            Qt.WindowCloseButtonHint | 
+            Qt.WindowMinimizeButtonHint
+        )
+        
+        # Принудительно сделать окно видимым
+        self.setAttribute(Qt.WA_ShowWithoutActivating, False)
+        
         # Основной layout
         layout = QVBoxLayout()
         layout.setSpacing(15)
@@ -168,9 +183,13 @@ class SettingsWindow(QWidget):
     
     def _on_record_hotkey(self) -> None:
         """Обработчик нажатия кнопки записи горячей клавиши."""
-        self.hotkey_button.setText("Нажмите клавишу...")
+        self.hotkey_button.setText("Нажмите клавишу или кнопку мыши...")
         self.hotkey_button.setEnabled(False)
         self.recording_hotkey = True
+        
+        # Захватить события мыши
+        self.setMouseTracking(True)
+        self.grabMouse()
     
     def keyPressEvent(self, event) -> None:
         """
@@ -186,11 +205,65 @@ class SettingsWindow(QWidget):
             key_name = self._qt_key_to_string(key)
             
             if key_name:
-                self.config['hotkey'] = key_name
-                self.hotkey_label.setText(f"Текущая клавиша: {key_name.upper()}")
-                self.hotkey_button.setText("Изменить клавишу")
-                self.hotkey_button.setEnabled(True)
-                self.recording_hotkey = False
+                self._finish_hotkey_recording(key_name)
+    
+    def mousePressEvent(self, event) -> None:
+        """
+        Перехват нажатия кнопки мыши для записи горячей клавиши.
+        
+        Args:
+            event: Событие нажатия мыши
+        """
+        if self.recording_hotkey:
+            button = event.button()
+            
+            # Преобразовать кнопку мыши в строковое представление
+            button_name = self._mouse_button_to_string(button)
+            
+            if button_name:
+                self._finish_hotkey_recording(button_name)
+        else:
+            super().mousePressEvent(event)
+    
+    def _finish_hotkey_recording(self, key_name: str) -> None:
+        """
+        Завершить запись горячей клавиши.
+        
+        Args:
+            key_name: Название клавиши/кнопки
+        """
+        self.config['hotkey'] = key_name
+        self.hotkey_label.setText(f"Текущая клавиша: {key_name.upper()}")
+        self.hotkey_button.setText("Изменить клавишу")
+        self.hotkey_button.setEnabled(True)
+        self.recording_hotkey = False
+        
+        # Освободить захват мыши
+        if self.mouseGrabber() == self:
+            self.releaseMouse()
+        self.setMouseTracking(False)
+    
+    def _mouse_button_to_string(self, button) -> Optional[str]:
+        """
+        Преобразовать кнопку мыши в строковое представление.
+        
+        Args:
+            button: Qt кнопка мыши
+            
+        Returns:
+            Строковое представление кнопки
+        """
+        from PyQt5.QtCore import Qt
+        
+        button_map = {
+            Qt.LeftButton: "mouse_left",
+            Qt.RightButton: "mouse_right",
+            Qt.MiddleButton: "mouse_middle",
+            Qt.XButton1: "mouse_x1",  # Боковая кнопка назад
+            Qt.XButton2: "mouse_x2",  # Боковая кнопка вперед
+        }
+        
+        return button_map.get(button)
     
     def _qt_key_to_string(self, qt_key: int) -> Optional[str]:
         """
@@ -207,10 +280,11 @@ class SettingsWindow(QWidget):
             f_num = qt_key - Qt.Key_F1 + 1
             return f"f{f_num}"
         
-        # Буквы и цифры
+        # Буквы (теперь поддерживаются!)
         if Qt.Key_A <= qt_key <= Qt.Key_Z:
             return chr(qt_key).lower()
         
+        # Цифры
         if Qt.Key_0 <= qt_key <= Qt.Key_9:
             return chr(qt_key)
         
@@ -222,6 +296,16 @@ class SettingsWindow(QWidget):
             Qt.Key_Tab: "tab",
             Qt.Key_Escape: "esc",
             Qt.Key_Backspace: "backspace",
+            Qt.Key_Delete: "delete",
+            Qt.Key_Insert: "insert",
+            Qt.Key_Home: "home",
+            Qt.Key_End: "end",
+            Qt.Key_PageUp: "page_up",
+            Qt.Key_PageDown: "page_down",
+            Qt.Key_Up: "up",
+            Qt.Key_Down: "down",
+            Qt.Key_Left: "left",
+            Qt.Key_Right: "right",
         }
         
         return special_keys.get(qt_key)

@@ -25,7 +25,7 @@ if sys.platform == 'win32':
 
 import pyperclip
 from PyQt5.QtWidgets import QApplication
-from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt5.QtCore import QObject, pyqtSignal, Qt
 
 # Добавить ffmpeg в PATH для Whisper
 try:
@@ -178,27 +178,81 @@ class VotobuApp(QObject):
     
     def _on_settings_requested(self) -> None:
         """Обработчик запроса открытия настроек."""
-        if self.settings_window is None or not self.settings_window.isVisible():
-            self.settings_window = SettingsWindow(self.config_manager.config)
-            self.settings_window.settings_saved.connect(self._on_settings_saved)
-        
-        self.settings_window.show()
-        self.settings_window.activateWindow()
+        try:
+            # Показать уведомление что окно открывается
+            self.tray_app.show_notification(
+                "Настройки",
+                "Открывается окно настроек..."
+            )
+            
+            if self.settings_window is None or not self.settings_window.isVisible():
+                self.settings_window = SettingsWindow(self.config_manager.config)
+                self.settings_window.settings_saved.connect(self._on_settings_saved)
+            
+            # Убедиться что окно на экране в нужной позиции
+            self.settings_window.move(100, 100)
+            self.settings_window.resize(500, 400)
+            
+            # Показать окно с принудительной активацией
+            self.settings_window.show()
+            self.settings_window.setWindowState(self.settings_window.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)
+            self.settings_window.raise_()
+            self.settings_window.activateWindow()
+            
+            # Дополнительная попытка поднять окно
+            self.settings_window.setFocus()
+            
+        except Exception as e:
+            # Показать уведомление об ошибке
+            self.tray_app.show_notification(
+                "Ошибка",
+                f"Не удалось открыть настройки: {str(e)}"
+            )
     
     def _on_settings_saved(self, new_config: dict) -> None:
         """Обработчик сохранения настроек."""
+        # Отслеживаем какие настройки изменились
+        hotkey_changed = new_config.get('hotkey') != self.config_manager.config.get('hotkey')
+        language_changed = new_config.get('language') != self.config_manager.config.get('language')
+        model_changed = new_config.get('whisper_model') != self.config_manager.config.get('whisper_model')
+        
         # Сохранить конфигурацию
         self.config_manager.save_config(new_config)
         
         # Обновить компоненты
-        if new_config.get('hotkey') != self.config_manager.config.get('hotkey'):
+        if hotkey_changed:
             self.hotkey_manager.change_hotkey(new_config['hotkey'])
         
-        if new_config.get('language') != self.config_manager.config.get('language'):
+        if language_changed:
             self.speech_recognizer.change_language(new_config['language'])
         
-        if new_config.get('whisper_model') != self.config_manager.config.get('whisper_model'):
+        if model_changed:
             self.speech_recognizer.change_model(new_config['whisper_model'])
+        
+        # Показать уведомление об успешном сохранении
+        if hotkey_changed:
+            # Специальное уведомление для изменения горячей клавиши
+            hotkey_display = new_config['hotkey'].upper()
+            self.tray_app.show_notification(
+                "Настройки сохранены",
+                f"Горячая клавиша изменена на: {hotkey_display}\n\n"
+                f"💡 Рекомендуется перезапустить программу\n"
+                f"для гарантированного применения изменений.\n\n"
+                f"ПКМ на иконке → Выход → Запустить заново"
+            )
+        elif model_changed:
+            # Уведомление для изменения модели (требует перезагрузки модели)
+            self.tray_app.show_notification(
+                "Настройки сохранены",
+                f"Модель Whisper изменена.\n"
+                f"Перезапустите программу для применения."
+            )
+        else:
+            # Обычное уведомление для других настроек
+            self.tray_app.show_notification(
+                "Настройки сохранены",
+                "Изменения применены успешно!"
+            )
     
     def _on_quit_requested(self) -> None:
         """Обработчик запроса выхода из приложения."""

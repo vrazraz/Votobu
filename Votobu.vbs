@@ -1,7 +1,8 @@
 ' Скрипт для запуска Votobu БЕЗ консольного окна
-' Двойной клик на этот файл для невидимого запуска
+' Использует python.exe но скрывает консольное окно
 
 Set WshShell = CreateObject("WScript.Shell")
-WshShell.Run "pythonw.exe src\main.py", 0, False
+' Запускаем python.exe (не pythonw.exe!) но с флагом 0 = скрытое окно
+WshShell.Run "python.exe src\main.py", 0, False
 Set WshShell = Nothing
 

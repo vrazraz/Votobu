@@ -11,10 +11,10 @@ REM Create VBScript to make shortcut
 echo Set oWS = WScript.CreateObject("WScript.Shell") > CreateShortcut.vbs
 echo sLinkFile = oWS.SpecialFolders("Desktop") ^& "\Votobu.lnk" >> CreateShortcut.vbs
 echo Set oLink = oWS.CreateShortcut(sLinkFile) >> CreateShortcut.vbs
-echo oLink.TargetPath = "%CURRENT_DIR%\Votobu.vbs" >> CreateShortcut.vbs
+echo oLink.TargetPath = """%CURRENT_DIR%\Votobu_HideConsole.vbs""" >> CreateShortcut.vbs
 echo oLink.WorkingDirectory = "%CURRENT_DIR%" >> CreateShortcut.vbs
 echo oLink.IconLocation = "%CURRENT_DIR%\assets\icon.png" >> CreateShortcut.vbs
-echo oLink.Description = "Votobu - Voice to Text" >> CreateShortcut.vbs
+echo oLink.Description = "Votobu - Voice to Text (No Console)" >> CreateShortcut.vbs
 echo oLink.Save >> CreateShortcut.vbs
 
 REM Run VBScript
