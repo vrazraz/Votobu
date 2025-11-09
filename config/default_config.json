@@ -1,0 +1,8 @@
+{
+  "hotkey": "f9",
+  "language": "ru",
+  "whisper_model": "base",
+  "sample_rate": 16000,
+  "channels": 1
+}
+
